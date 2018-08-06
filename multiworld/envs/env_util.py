@@ -107,6 +107,6 @@ def get_stat_in_paths(paths, dict_name, scalar_name):
 
 
 def get_asset_full_path(file_name):
-    return os.path.join(ENV_ASSET_DIR, file_name)
+    return os.path.abspath(os.path.join(ENV_ASSET_DIR, file_name))
 
 
