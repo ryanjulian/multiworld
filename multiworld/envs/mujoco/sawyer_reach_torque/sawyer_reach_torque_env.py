@@ -23,8 +23,9 @@ class SawyerReachTorqueEnv(MujocoEnv, Serializable, MultitaskEnv):
             indicator_threshold=.05,
             goal_low=None,
             goal_high=None,
-            hand_distance_completion_bonus=0,
+            hand_distance_completion_bonus=0.,
             torque_limit_pct=1.0,
+            velocity_penalty_coeff=0.0,
     ):
         self.quick_init(locals())
         MultitaskEnv.__init__(self)
@@ -66,6 +67,7 @@ class SawyerReachTorqueEnv(MujocoEnv, Serializable, MultitaskEnv):
         self.reward_type = reward_type
         self.indicator_threshold = indicator_threshold
         self.hand_distance_completion_bonus = hand_distance_completion_bonus
+        self.velocity_penalty_coeff = velocity_penalty_coeff
         goal = self.sample_goal()
         self._state_goal = goal['state_desired_goal']
         self.reset()
@@ -254,17 +256,22 @@ class SawyerReachTorqueEnv(MujocoEnv, Serializable, MultitaskEnv):
         goals = desired_goals
         distances = np.linalg.norm(hand_pos - goals, axis=1)
         if self.reward_type == 'hand_distance':
-            r = -distances
+            r = 1 - np.exp(distances)
             done = any(distances < self.indicator_threshold)
-            if done:
-                r += self.hand_distance_completion_bonus
+            # completion bonus
+            # if done:
+            #     r += self.hand_distance_completion_bonus
+
+            # velocity penalty
+            r -= np.linalg.norm(
+                self.sim.data.qvel.flat) * self.velocity_penalty_coeff
 
         elif self.reward_type == 'hand_success':
             r = -(distances < self.indicator_threshold).astype(float)
         else:
             raise NotImplementedError("Invalid/no reward type.")
 
-        return r, done
+        return r, False
 
     def set_to_goal(self, goal):
         raise NotImplementedError()
