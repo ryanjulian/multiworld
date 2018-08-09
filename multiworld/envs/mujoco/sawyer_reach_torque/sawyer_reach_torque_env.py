@@ -26,6 +26,7 @@ class SawyerReachTorqueEnv(MujocoEnv, Serializable, MultitaskEnv):
             hand_distance_completion_bonus=0.,
             torque_limit_pct=1.0,
             velocity_penalty_coeff=0.0,
+            hide_goal_pos=False,
     ):
         self.quick_init(locals())
         MultitaskEnv.__init__(self)
@@ -46,6 +47,7 @@ class SawyerReachTorqueEnv(MujocoEnv, Serializable, MultitaskEnv):
         self.safety_box = Box(goal_low, goal_high)
         self.keep_vel_in_obs = keep_vel_in_obs
         self.goal_space = Box(goal_low, goal_high)
+        self.hide_goal_pos = hide_goal_pos
         obs_size = self._get_env_obs().shape[0]
         high = np.inf * np.ones(obs_size)
         low = -high
@@ -127,15 +129,23 @@ class SawyerReachTorqueEnv(MujocoEnv, Serializable, MultitaskEnv):
         return ob, reward, done, info
 
     def _get_env_obs(self):
+        qpos = self.sim.data.qpos.flat
+        qvel = self.sim.data.qvel.flat
+
+        if self.hide_goal_pos:
+            # robot joints are the first 7
+            qpos = qpos[:7]
+            qvel = qvel[:7]
+
         if self.keep_vel_in_obs:
             return np.concatenate([
-                self.sim.data.qpos.flat,
-                self.sim.data.qvel.flat,
+                qpos,
+                qvel,
                 self.get_endeff_pos(),
             ])
         else:
             return np.concatenate([
-                self.sim.data.qpos.flat,
+                qpos,
                 self.get_endeff_pos(),
             ])
 
